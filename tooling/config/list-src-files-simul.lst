@@ -1,0 +1,2 @@
+src/simulation/modules/alu.v
+src/simulation/test_bench.v

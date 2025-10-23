@@ -1,0 +1,7 @@
+# vsim -do ./config/run.tcl -lib work -c -wlf ./waveform.wlf work.test_bench 
+# Loading work.test_bench
+# Loading work.alu
+# do ./config/run.tcl 
+# All tests passed!
+# ** Note: $finish    : ../src/simulation/test_bench.v(78)
+#    Time: 62 ps  Iteration: 0  Instance: /test_bench

@@ -1,0 +1,43 @@
+m255
+K3
+13
+cModel Technology
+Z0 dC:\Users\Nikola\Documents\VLSI sistemi\Projekat\tooling
+valu
+!i10b 1
+!s100 :<f092Mhm4]MA^9@b^dcA2
+I3B>QXS@d[VWgSjNOWRbDR3
+VSJ;618@iBOm`9`3UGU5Yn1
+Z1 dC:\Users\Nikola\Documents\VLSI sistemi\Projekat\tooling
+w1761164276
+8../src/simulation/modules/alu.v
+F../src/simulation/modules/alu.v
+L0 1
+Z2 OV;L;10.1d;51
+r1
+!s85 0
+31
+Z3 !s108 1761164286.582000
+Z4 !s107 ../src/simulation/test_bench.v|../src/simulation/modules/alu.v|
+Z5 !s90 -work|work|-l|./vlog_compile.log|-override_timescale|1 ps / 1 ps|../src/simulation/modules/alu.v|../src/simulation/test_bench.v|
+!s101 -O0
+Z6 o-work work -override_timescale {1 ps / 1 ps} -O0
+vtest_bench
+!i10b 1
+!s100 bj:M5YPzXTzF]U;0KCV6Q1
+I58jK3dZRTiA=1o]>h0J9A0
+VEJNK5ZO7TWUP1egUA9^TR1
+R1
+w1761163865
+8../src/simulation/test_bench.v
+F../src/simulation/test_bench.v
+L0 1
+R2
+r1
+!s85 0
+31
+R3
+R4
+R5
+!s101 -O0
+R6
