@@ -1,7 +1,9 @@
 # vsim -do ./config/run.tcl -lib work -c -wlf ./waveform.wlf work.test_bench 
 # Loading work.test_bench
-# Loading work.alu
+# Loading work.memory
 # do ./config/run.tcl 
-# All tests passed!
-# ** Note: $finish    : ../src/simulation/test_bench.v(78)
-#    Time: 62 ps  Iteration: 0  Instance: /test_bench
+# RESET FAIL: out=0xx exp=0x0000
+# WRITE-SAME-CYCLE FAIL: out=0xbeef exp(old)=0x1111
+# FAILED with 2 error(s).
+# ** Note: $finish    : ../src/simulation/test_bench.v(111)
+#    Time: 166 ps  Iteration: 0  Instance: /test_bench

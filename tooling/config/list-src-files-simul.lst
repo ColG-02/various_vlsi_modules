@@ -1,2 +1,2 @@
-src/simulation/modules/alu.v
+src/simulation/modules/memory.v
 src/simulation/test_bench.v
