@@ -29,7 +29,7 @@ module cpu #(
     reg [1:0] state, next_state;
 
     // ---------- micro-steps ----------
-    reg [1:0] fetch_step, fetch_step_next;  // 0..3
+    reg [2:0] fetch_step, fetch_step_next;  // 0..3
     reg [2:0] addr_step,  addr_step_next;   // 0..7
 
     wire fetch_done = (fetch_step == 2'd1); // placeholder: 2 beats total
@@ -130,17 +130,17 @@ module cpu #(
     assign we = we_reg;
     assign out = out_reg;
 
-    wire [3:0]  opc = ir_out[15:12];
-    wire [3:0]  op2 = ir_out[11:8];
-    wire [3:0]  op1 = ir_out[7:4];
-    wire [3:0]  op0 = ir_out[3:0];
+    wire [3:0] opc = ir_out[15:12];
+    wire [3:0] opx = ir_out[11:8];
+    wire [3:0] opy = ir_out[7:4];
+    wire [3:0] opz = ir_out[3:0];
 
-    wire ind2  = op2[3];
-    wire ind1  = op1[3];
-    wire ind0  = op0[3];
-    wire [2:0]  r2 = op2[2:0];
-    wire [2:0]  r1 = op1[2:0];
-    wire [2:0]  r0 = op0[2:0];
+    wire indx = opx[3];
+    wire indy = opy[3];
+    wire indz = opz[3];
+    wire [2:0] rx = opx[2:0];
+    wire [2:0] ry = opy[2:0];
+    wire [2:0] rz = opz[2:0];
 
     wire [DATA_WIDTH-1:0] imm16 = ir_out[31:16];
 
@@ -169,9 +169,9 @@ module cpu #(
         end
         else begin
             state <= next_state;
-            fetch_step     <= fetch_step_next; 
-            addr_step      <= addr_step_next;
-            booted     <= 1'b1;  
+            fetch_step <= fetch_step_next; 
+            addr_step <= addr_step_next;
+            booted <= 1'b1;  
             
             we_reg <= we_next;
             addr_reg <= addr_next;
@@ -203,9 +203,26 @@ module cpu #(
             sp_cl=0; sp_ld=0; sp_inc=0; sp_dec=0;  sp_in_next = sp_in_reg;
             ir_cl=0; ir_ld=0; ir_in_next = ir_in_reg;
             // mar/mdr/a/r controls later...
+            mar_in = mar_in;   // hold by default
+            mdr_in = mdr_in;   // hold by default
         end 
     endtask
 
+    // opcode names
+    localparam [3:0]
+        OP_MOV  = 4'h0,
+        OP_ADD  = 4'h1, OP_SUB  = 4'h2, OP_MUL  = 4'h3, OP_DIV  = 4'h4,
+        OP_IN   = 4'h7,
+        OP_OUT  = 4'h8,
+        OP_STOP = 4'hF;
+    
+    // Helper: which opcodes need a second word? (example list)
+    function automatic logic needs_ext (input logic [3:0] op);
+        case (op)
+            //OP_JMPA, OP_LDI, OP_CALL: needs_ext = 1'b1;  
+            default:                  needs_ext = 1'b0;  
+        endcase
+    endfunction
     
     // 2) Next-state + outputs (combinational)
     always @* begin
@@ -215,33 +232,68 @@ module cpu #(
             pc_ld = 1'b1; pc_in_next = PROG_START;  // 6'd8
             sp_ld = 1'b1; sp_in_next = STACK_INIT;  // 6'd63
         end
-
         case (state)
             // ---------------- FETCH ----------------
             S_FETCH: begin
                 case (fetch_step)
-                    2'd0: begin
-                        // Issue read at PC: mar <= pc_out
+                    // ---- WORD0 ----
+                    3'd0: begin // MAR <- PC
+                        mar_in  = pc_out;
+                        mar_ld  = 1'b1;
+                        fetch_step_next = 3'd1;
+                    end
+                    3'd1: begin // Issue memory read at MAR
+                        addr_next = mar_out;   // drive CPU->MEM address bus
+                        we_next = 1'b0;      // read
+                        fetch_step_next = 3'd2;
+                    end
+                    3'd2: begin
+                        // Capture memory word into MDR
+                        mdr_in  = mem;
+                        mdr_ld  = 1'b1;
+                        fetch_step_next = 3'd3;
+                    end
+                    3'd3: begin // IR {WORD1, WORD0}
+                        // IR[15:0] <- MDR ; PC++
+                        ir_ld = 1'b1;
+                        ir_in_next = { ir_out[31:16], mdr_out };
+                        pc_inc = 1'b1;
+
+                        // Need a second word?
+                        if (needs_ext(mdr_out[15:12])) begin
+                            fetch_step_next = 3'd4;   // go fetch WORD1
+                        end else begin
+                            fetch_step_next = 3'd0;
+                            next_state = S_ADDR; // done fetching
+                        end
+                    end
+                    // ---- WORD1 (only if needed) ----
+                    3'd4: begin
+                        // MAR <- PC
                         mar_in = pc_out;
                         mar_ld = 1'b1;
-                        pc_inc = 1'b1;
-                        fetch_step_next = 2'd1;
+                        fetch_step_next = 3'd5;
                     end
-                    2'd1: begin
+                    3'd5: begin
+                        // Issue memory read at MAR
                         addr_next = mar_out;
-                        fetch_step_next = 2'd2;
+                        we_next = 1'b0;
+                        fetch_step_next = 3'd6;
                     end
-                    2'd2: begin
-                        // Latch word0 into IR[15:0]; PC++
-                        ir_ld        = 1'b1;
-                        ir_in_next   = { ir_out[31:16], mem };
-                        pc_inc       = 1'b1;
-
-                        // (If some opcodes need word1, add steps 2/3 here.)
-                        fetch_step_next = 2'd0;
-                        next_state   = S_ADDR;
+                    3'd6: begin
+                        // Capture memory word into MDR
+                        mdr_in  = mem;
+                        mdr_ld  = 1'b1;
+                        fetch_step_next = 3'd7;
                     end
-
+                    3'd7: begin
+                        // IR[31:16] <- MDR ; PC++
+                        ir_ld = 1'b1;
+                        ir_in_next = { mdr_out, ir_out[15:0] };
+                        pc_inc = 1'b1;
+                        fetch_step_next = 3'd0;
+                        next_state = S_ADDR;
+                    end
                 endcase
             end
 
