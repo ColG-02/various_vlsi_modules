@@ -29,8 +29,8 @@ module cpu #(
     reg [1:0] state, next_state;
 
     // ---------- micro-steps ----------
-    reg [2:0] fetch_step, fetch_step_next;  // 0..3
-    reg [2:0] addr_step,  addr_step_next;   // 0..7
+    reg [2:0] fetch_step, fetch_step_next;  // 0..7
+    reg [4:0] addr_step,  addr_step_next;   // 0..31
 
     wire fetch_done = (fetch_step == 2'd1); // placeholder: 2 beats total
     wire addr_done  = (addr_step  == 3'd1); // placeholder: 2 beats total
@@ -125,6 +125,34 @@ module cpu #(
         .clk(clk),.rst_n(rst_n),.cl(r_cl),.ld(r_ld),.in(r_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(r_out)
     );
 
+
+    // X
+    reg x_cl, x_ld;
+    reg  [DATA_WIDTH-1:0] x_in;
+    wire [DATA_WIDTH-1:0] x_out;
+
+    register #(.DATA_WIDTH(DATA_WIDTH)) X (
+        .clk(clk),.rst_n(rst_n),.cl(x_cl),.ld(x_ld),.in(x_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(x_out)
+    );
+
+    // Y
+    reg y_cl, y_ld;
+    reg  [DATA_WIDTH-1:0] y_in;
+    wire [DATA_WIDTH-1:0] y_out;
+
+    register #(.DATA_WIDTH(DATA_WIDTH)) Y (
+        .clk(clk),.rst_n(rst_n),.cl(y_cl),.ld(y_ld),.in(y_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(y_out)
+    );
+
+    // Z
+    reg z_cl, z_ld;
+    reg  [DATA_WIDTH-1:0] z_in;
+    wire [DATA_WIDTH-1:0] z_out;
+
+    register #(.DATA_WIDTH(DATA_WIDTH)) Z (
+        .clk(clk),.rst_n(rst_n),.cl(z_cl),.ld(z_ld),.in(z_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(z_out)
+    );
+
     assign data = data_reg;
     assign addr = addr_reg;
     assign we = we_reg;
@@ -144,8 +172,8 @@ module cpu #(
 
     wire [DATA_WIDTH-1:0] imm16 = ir_out[31:16];
 
-    reg [DATA_WIDTH-1:0]  val1, val2;      
-    reg [ADDR_WIDTH-1:0]  dest_addr0, dest_addr1, dest_addr2;
+    reg [DATA_WIDTH-1:0]  valx, valy, valz;      
+    reg [ADDR_WIDTH-1:0]  dest_addrx, dest_addry, dest_addrz;
 
     reg booted;
 
@@ -203,8 +231,6 @@ module cpu #(
             sp_cl=0; sp_ld=0; sp_inc=0; sp_dec=0;  sp_in_next = sp_in_reg;
             ir_cl=0; ir_ld=0; ir_in_next = ir_in_reg;
             // mar/mdr/a/r controls later...
-            mar_in = mar_in;   // hold by default
-            mdr_in = mdr_in;   // hold by default
         end 
     endtask
 
@@ -223,6 +249,23 @@ module cpu #(
             default:                  needs_ext = 1'b0;  
         endcase
     endfunction
+
+    // mask = {uses_x, uses_y, uses_z_addr}
+    function automatic logic [2:0] op_mask (input logic [3:0] op);
+    case (op)
+        OP_MOV:                         op_mask = 3'b101;
+        OP_ADD, OP_SUB, OP_MUL, OP_DIV: op_mask = 3'b111;
+        OP_OUT:                         op_mask = 3'b100;
+        OP_IN:                          op_mask = 3'b001;
+        OP_STOP:                        op_mask = 3'b000;
+        default:                        op_mask = 3'b000;
+    endcase
+    endfunction
+
+    wire [2:0] mask = op_mask(opc);
+    wire uses_x      = mask[2];
+    wire uses_y      = mask[1];
+    wire uses_z      = mask[0];
     
     // 2) Next-state + outputs (combinational)
     always @* begin
@@ -296,21 +339,129 @@ module cpu #(
                     end
                 endcase
             end
-
             // ---------------- ADDR -----------------
             S_ADDR: begin
                 case (addr_step)
-                    3'd0: begin
-                        // (later) read operand GPRs / follow indirection
-                        addr_step_next = 3'd1;
+                    // ===== X (steps 0..5) =====
+                    5'd0: begin
+                    if (uses_x) begin
+                            mar_ld         = 1'b1;
+                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, rx};  // base addr = rx
+                            addr_step_next = 5'd1;
+                        end else begin
+                            addr_step_next = 5'd6; // skip to Y
+                        end
                     end
-                    3'd1: begin
-                        next_state   = S_EXEC;
-                        addr_step_next  = 3'd0;
+                    5'd1: begin // ISSUE base(X)
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd2;
+                    end
+                    5'd2: begin // CAPTURE base(X)
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        addr_step_next  = 5'd3;
+                    end
+                    5'd3: begin // decide direct/indirect
+                    if (indx) begin
+                            mar_ld         = 1'b1;  mar_in   = mdr_out;       // pointer
+                            addr_step_next = 5'd4;
+                        end else begin
+                            valx           = mdr_out;                          // direct value
+                            dest_addrx     = {{(ADDR_WIDTH-3){1'b0}}, rx};     // base as EA
+                            addr_step_next = 5'd6;                             // go to Y
+                        end
+                    end
+                    5'd4: begin // ISSUE X pointer target
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd5;
+                    end
+                    5'd5: begin // CAPTURE X pointer target
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        valx            = mdr_out;
+                        dest_addrx      = mar_out;                            // EA = pointer
+                        addr_step_next  = 5'd6;
+                        // ===== Y (steps 6..11) =====
+                    end 
+                    5'd6: begin
+                    if (uses_y) begin
+                            mar_ld         = 1'b1;
+                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, ry};
+                            addr_step_next = 5'd7;
+                        end else begin
+                            addr_step_next = 5'd12; // skip to Z
+                        end
+                    end
+                    5'd7: begin // ISSUE base(Y)
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd8;
+                    end
+                    5'd8: begin // CAPTURE base(Y)
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        addr_step_next  = 5'd9;
+                    end
+                    5'd9: begin // decide direct/indirect
+                    if (indy) begin
+                            mar_ld         = 1'b1;  mar_in   = mdr_out;
+                            addr_step_next = 5'd10;
+                        end else begin
+                            valy           = mdr_out;
+                            dest_addry     = {{(ADDR_WIDTH-3){1'b0}}, ry};
+                            addr_step_next = 5'd12;
+                        end
+                    end
+                    5'd10: begin // ISSUE Y pointer target
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd11;
+                    end
+                    5'd11: begin // CAPTURE Y pointer target
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        valy            = mdr_out;
+                        dest_addry      = mar_out;
+                        addr_step_next  = 5'd12;
+                    // ===== Z (steps 12..17) — same as X/Y =====
+                    end 
+                    5'd12: begin
+                    if (uses_z) begin
+                            mar_ld         = 1'b1;
+                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, rz};
+                            addr_step_next = 5'd13;
+                        end else begin
+                            addr_step_next = 5'd18; // done
+                        end
+                    end
+                    5'd13: begin // ISSUE base(Z)
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd14;
+                    end
+                    5'd14: begin // CAPTURE base(Z)
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        addr_step_next  = 5'd15;
+                    end
+                    5'd15: begin // decide direct/indirect
+                    if (indz) begin
+                        mar_ld         = 1'b1;  mar_in   = mdr_out;
+                        addr_step_next = 5'd16;
+                    end else begin
+                        valz           = mdr_out;                          // symmetry
+                        dest_addrz     = {{(ADDR_WIDTH-3){1'b0}}, rz};     // EA for Z
+                        addr_step_next = 5'd18;
+                    end
+                    end
+                    5'd16: begin // ISSUE Z pointer target
+                        addr_next       = mar_out; we_next = 1'b0;
+                        addr_step_next  = 5'd17;
+                    end
+                    5'd17: begin // CAPTURE Z pointer target
+                        mdr_ld          = 1'b1;   mdr_in   = mem;
+                        valz            = mdr_out;             // symmetry (value at EA)
+                        dest_addrz      = mar_out;             // EA for Z
+                        addr_step_next  = 5'd18;
+                    // ===== done =====
+                    end 5'd18: begin
+                        addr_step_next  = 5'd0;
+                        next_state      = S_EXEC;
                     end
                 endcase
             end
-
             // ---------------- EXEC -----------------
             S_EXEC: begin
                 // (do ALU/writeback/pc updates)
