@@ -32,9 +32,6 @@ module cpu #(
     reg [2:0] fetch_step, fetch_step_next;  // 0..7
     reg [4:0] addr_step,  addr_step_next;   // 0..31
 
-    wire fetch_done = (fetch_step == 2'd1); // placeholder: 2 beats total
-    wire addr_done  = (addr_step  == 3'd1); // placeholder: 2 beats total
-
     // ---------- registered outputs ----------
     reg                    we_reg,    we_next;
     reg [ADDR_WIDTH-1:0]   addr_reg,  addr_next;
@@ -172,8 +169,8 @@ module cpu #(
 
     wire [DATA_WIDTH-1:0] imm16 = ir_out[31:16];
 
-    reg [DATA_WIDTH-1:0]  valx, valy, valz;      
-    reg [ADDR_WIDTH-1:0]  dest_addrx, dest_addry, dest_addrz;
+    // reg [DATA_WIDTH-1:0]  valx, valy, valz;      
+    // reg [ADDR_WIDTH-1:0]  dest_addrx, dest_addry, dest_addrz;
 
     reg booted;
 
@@ -181,8 +178,8 @@ module cpu #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_FETCH;
-            fetch_step  <= 2'd0;
-            addr_step   <= 3'd0;
+            fetch_step  <= 3'd0;
+            addr_step   <= 5'd0;
             booted     <= 1'b0;
 
             we_reg <= 1'b0;
@@ -341,127 +338,155 @@ module cpu #(
             end
             // ---------------- ADDR -----------------
             S_ADDR: begin
-                case (addr_step)
-                    // ===== X (steps 0..5) =====
-                    5'd0: begin
-                    if (uses_x) begin
-                            mar_ld         = 1'b1;
-                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, rx};  // base addr = rx
-                            addr_step_next = 5'd1;
-                        end else begin
-                            addr_step_next = 5'd6; // skip to Y
-                        end
-                    end
-                    5'd1: begin // ISSUE base(X)
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd2;
-                    end
-                    5'd2: begin // CAPTURE base(X)
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        addr_step_next  = 5'd3;
-                    end
-                    5'd3: begin // decide direct/indirect
-                    if (indx) begin
-                            mar_ld         = 1'b1;  mar_in   = mdr_out;       // pointer
-                            addr_step_next = 5'd4;
-                        end else begin
-                            valx           = mdr_out;                          // direct value
-                            dest_addrx     = {{(ADDR_WIDTH-3){1'b0}}, rx};     // base as EA
-                            addr_step_next = 5'd6;                             // go to Y
-                        end
-                    end
-                    5'd4: begin // ISSUE X pointer target
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd5;
-                    end
-                    5'd5: begin // CAPTURE X pointer target
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        valx            = mdr_out;
-                        dest_addrx      = mar_out;                            // EA = pointer
-                        addr_step_next  = 5'd6;
-                        // ===== Y (steps 6..11) =====
-                    end 
-                    5'd6: begin
-                    if (uses_y) begin
-                            mar_ld         = 1'b1;
-                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, ry};
-                            addr_step_next = 5'd7;
-                        end else begin
-                            addr_step_next = 5'd12; // skip to Z
-                        end
-                    end
-                    5'd7: begin // ISSUE base(Y)
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd8;
-                    end
-                    5'd8: begin // CAPTURE base(Y)
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        addr_step_next  = 5'd9;
-                    end
-                    5'd9: begin // decide direct/indirect
-                    if (indy) begin
-                            mar_ld         = 1'b1;  mar_in   = mdr_out;
-                            addr_step_next = 5'd10;
-                        end else begin
-                            valy           = mdr_out;
-                            dest_addry     = {{(ADDR_WIDTH-3){1'b0}}, ry};
-                            addr_step_next = 5'd12;
-                        end
-                    end
-                    5'd10: begin // ISSUE Y pointer target
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd11;
-                    end
-                    5'd11: begin // CAPTURE Y pointer target
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        valy            = mdr_out;
-                        dest_addry      = mar_out;
-                        addr_step_next  = 5'd12;
-                    // ===== Z (steps 12..17) — same as X/Y =====
-                    end 
-                    5'd12: begin
-                    if (uses_z) begin
-                            mar_ld         = 1'b1;
-                            mar_in         = {{(ADDR_WIDTH-3){1'b0}}, rz};
-                            addr_step_next = 5'd13;
-                        end else begin
-                            addr_step_next = 5'd18; // done
-                        end
-                    end
-                    5'd13: begin // ISSUE base(Z)
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd14;
-                    end
-                    5'd14: begin // CAPTURE base(Z)
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        addr_step_next  = 5'd15;
-                    end
-                    5'd15: begin // decide direct/indirect
-                    if (indz) begin
-                        mar_ld         = 1'b1;  mar_in   = mdr_out;
-                        addr_step_next = 5'd16;
-                    end else begin
-                        valz           = mdr_out;                          // symmetry
-                        dest_addrz     = {{(ADDR_WIDTH-3){1'b0}}, rz};     // EA for Z
-                        addr_step_next = 5'd18;
-                    end
-                    end
-                    5'd16: begin // ISSUE Z pointer target
-                        addr_next       = mar_out; we_next = 1'b0;
-                        addr_step_next  = 5'd17;
-                    end
-                    5'd17: begin // CAPTURE Z pointer target
-                        mdr_ld          = 1'b1;   mdr_in   = mem;
-                        valz            = mdr_out;             // symmetry (value at EA)
-                        dest_addrz      = mar_out;             // EA for Z
-                        addr_step_next  = 5'd18;
-                    // ===== done =====
-                    end 5'd18: begin
-                        addr_step_next  = 5'd0;
-                        next_state      = S_EXEC;
-                    end
-                endcase
+            case (addr_step)
+                // ===== X (0..6) =====
+                5'd0: begin  // MAR <= rx (base)
+                if (uses_x) begin
+                    mar_ld = 1'b1;
+                    mar_in = {{(ADDR_WIDTH-3){1'b0}}, rx};
+                    addr_step_next = 5'd1;
+                end else begin
+                    addr_step_next = 5'd7; // skip to Y
+                end
+                end
+                5'd1: begin  // ISSUE base(X)
+                    addr_next = mar_out;  
+                    we_next = 1'b0;
+                    addr_step_next = 5'd2;
+                end
+                5'd2: begin  // CAPTURE base(X)
+                    mdr_ld = 1'b1;     
+                    mdr_in = mem;
+                    addr_step_next = 5'd3;
+                end
+                5'd3: begin  // direct/indirect?
+                if (indx) begin
+                    mar_ld = 1'b1;    
+                    mar_in = mdr_out;      // pointer
+                    addr_step_next = 5'd4;
+                end else begin
+                    x_ld = 1'b1;
+                    x_in = mdr_out;      // direct value
+                    addr_step_next = 5'd7;   // go to Y
+                end
+                end
+                5'd4: begin  // ISSUE X pointer target
+                    addr_next = mar_out;  
+                    we_next = 1'b0;
+                    addr_step_next = 5'd5;
+                end
+                5'd5: begin  // CAPTURE X pointer target
+                    mdr_ld = 1'b1;     
+                    mdr_in = mem;
+                    addr_step_next  = 5'd6;
+                end
+                5'd6: begin  // LOAD X (indirect)
+                    x_ld = 1'b1;     
+                    x_in = mdr_out;
+                    addr_step_next  = 5'd7; // go to Y
+                end
+
+                // ===== Y (7..13) =====
+                5'd7: begin  // MAR <= ry
+                if (uses_y) begin
+                    mar_ld = 1'b1;
+                    mar_in = {{(ADDR_WIDTH-3){1'b0}}, ry};
+                    addr_step_next = 5'd8;
+                end else begin
+                    addr_step_next = 5'd14; // skip to Z
+                end
+                end
+                5'd8:  begin 
+                    addr_next = mar_out;
+                    we_next = 1'b0; 
+                    addr_step_next = 5'd9; 
+                end
+                5'd9:  begin 
+                    mdr_ld = 1'b1;    
+                    mdr_in = mem;   
+                    addr_step_next = 5'd10; 
+                end
+                5'd10: begin
+                if (indy) begin
+                    mar_ld = 1'b1;    
+                    mar_in = mdr_out;
+                    addr_step_next = 5'd11;
+                end else begin
+                    y_ld = 1'b1;    
+                    y_in = mdr_out;
+                    addr_step_next = 5'd14;
+                end
+                end
+                5'd11: begin 
+                    addr_next = mar_out; 
+                    we_next = 1'b0; 
+                    addr_step_next = 5'd12; 
+                end
+                5'd12: begin 
+                    mdr_ld = 1'b1;    
+                    mdr_in = mem;   
+                    addr_step_next = 5'd13; 
+                end
+                5'd13: begin 
+                    y_ld = 1'b1;    
+                    y_in = mdr_out; 
+                    addr_step_next = 5'd14; 
+                end
+
+                // ===== Z (14..20) =====
+                5'd14: begin  // MAR <= rz
+                if (uses_z) begin
+                    mar_ld = 1'b1;
+                    mar_in = {{(ADDR_WIDTH-3){1'b0}}, rz};
+                    addr_step_next = 5'd15;
+                end else begin
+                    addr_step_next = 5'd21; // done
+                end
+                end
+                5'd15: begin 
+                    addr_next = mar_out; 
+                    we_next = 1'b0; 
+                    addr_step_next = 5'd16; 
+                end
+                5'd16: begin 
+                    mdr_ld = 1'b1;    
+                    mdr_in = mem;   
+                    addr_step_next = 5'd17; 
+                end
+                5'd17: begin
+                if (indz) begin
+                    mar_ld = 1'b1;    
+                    mar_in = mdr_out;
+                    addr_step_next = 5'd18;
+                end else begin
+                    z_ld = 1'b1;    
+                    z_in = mdr_out;
+                    addr_step_next = 5'd21;
+                end
+                end
+                5'd18: begin 
+                    addr_next = mar_out; 
+                    we_next = 1'b0; 
+                    addr_step_next = 5'd19; 
+                end
+                5'd19: begin 
+                    mdr_ld = 1'b1;    
+                    mdr_in = mem;   
+                    addr_step_next = 5'd20; 
+                end
+                5'd20: begin 
+                    z_ld = 1'b1;    
+                    z_in = mdr_out; 
+                    addr_step_next = 5'd21; 
+                end
+                // ===== done =====
+                5'd21: begin
+                    addr_step_next = 5'd0;
+                    next_state     = S_EXEC;
+                end
+            endcase
             end
+
             // ---------------- EXEC -----------------
             S_EXEC: begin
                 // (do ALU/writeback/pc updates)
