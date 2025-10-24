@@ -266,23 +266,28 @@ module cpu #(
         OP_STOP = 4'hF;
     
     // Helper: which opcodes need a second word? (example list)
-    function automatic logic needs_ext (input logic [3:0] op);
-        case (op)
-            //OP_JMPA, OP_LDI, OP_CALL: needs_ext = 1'b1;  
-            default:                  needs_ext = 1'b0;  
-        endcase
+    function needs_ext;
+        input [3:0] op;
+        begin
+            case (op)
+            // OP_JMPA, OP_LDI, OP_CALL: needs_ext = 1'b1;
+            default: needs_ext = 1'b0;
+            endcase
+        end
     endfunction
 
-    // mask = {uses_x, uses_y, uses_z_addr}
-    function automatic logic [2:0] op_mask (input logic [3:0] op);
-    case (op)
-        OP_MOV:                         op_mask = 3'b110;
-        OP_ADD, OP_SUB, OP_MUL, OP_DIV: op_mask = 3'b111;
-        OP_OUT:                         op_mask = 3'b100;
-        OP_IN:                          op_mask = 3'b100;
-        OP_STOP:                        op_mask = 3'b000;
-        default:                        op_mask = 3'b000;
-    endcase
+    function [2:0] op_mask;
+        input [3:0] op;
+        begin
+            case (op)
+            OP_MOV:                         op_mask = 3'b110;
+            OP_ADD, OP_SUB, OP_MUL, OP_DIV: op_mask = 3'b111;
+            OP_OUT:                         op_mask = 3'b100;
+            OP_IN:                          op_mask = 3'b100;
+            OP_STOP:                        op_mask = 3'b000;
+            default:                        op_mask = 3'b000;
+            endcase
+        end
     endfunction
 
     wire [2:0] mask = op_mask(opc);

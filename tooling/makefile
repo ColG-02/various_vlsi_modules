@@ -2,7 +2,7 @@
 # cd tooling
 # ./xpack/bin/make
 
-SIMUL_TOP_LEVEL_MODULE = test_bench
+SIMUL_TOP_LEVEL_MODULE = cpu_tb
 SIMUL_LIB = work
 # 1 (yes) -> override timescale
 # 0 (no)  -> do NOT override timescale

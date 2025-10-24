@@ -1,4 +1,4 @@
 library verilog;
 use verilog.vl_types.all;
-entity test_bench is
-end test_bench;
+entity cpu_tb is
+end cpu_tb;

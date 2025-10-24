@@ -1,9 +1,20 @@
-# vsim -do ./config/run.tcl -lib work -c -wlf ./waveform.wlf work.test_bench 
-# Loading work.test_bench
+# vsim -do ./config/run.tcl -lib work -c -wlf ./waveform.wlf work.cpu_tb 
+# Loading work.cpu_tb
+# Loading work.cpu
+# Loading work.register
+# Loading work.alu
 # Loading work.memory
 # do ./config/run.tcl 
-# RESET FAIL: out=0xx exp=0x0000
-# WRITE-SAME-CYCLE FAIL: out=0xbeef exp(old)=0x1111
-# FAILED with 2 error(s).
-# ** Note: $finish    : ../src/simulation/test_bench.v(111)
-#    Time: 166 ps  Iteration: 0  Instance: /test_bench
+# ** Warning: (vsim-PLI-3410) Illegal character '-' in data on line 1 of file "mem_init copy.mif".    : ../src/simulation/modules/memory.v(20)
+#    Time: 0 ps  Iteration: 0  Instance: /cpu_tb/mem_inst
+# ** Warning: (vsim-PLI-3410) Illegal character '-' in data on line 1 of file "mem_init copy.mif".    : ../src/simulation/modules/memory.v(20)
+#    Time: 0 ps  Iteration: 0  Instance: /cpu_tb/mem_inst
+# [130] PC=9  STATE=1  F=0 A=0 E=0  IR=0x0000  MAR=0  MDR=0xxxxx  MEM=0xxxxx  OPC=0  ALU_OC=0  OUT=0x0000
+# [330] PC=9  STATE=2  F=0 A=0 E=0  IR=0x0000  MAR=0  MDR=0xxxxx  MEM=0xxxxx  OPC=0  ALU_OC=0  OUT=0x0000
+# [350] WE=1  WRITE  addr=0 data=0xxxxx
+# [370] PC=9  STATE=0  F=0 A=0 E=0  IR=0x0000  MAR=0  MDR=0xxxxx  MEM=0xxxxx  OPC=0  ALU_OC=0  OUT=0x0000
+# [450] PC=10  STATE=1  F=0 A=0 E=0  IR=0x0xxxx  MAR=9  MDR=0xxxxx  MEM=0xxxxx  OPC=x  ALU_OC=x  OUT=0x0000
+# [530] PC=10  STATE=2  F=0 A=0 E=0  IR=0x0xxxx  MAR=9  MDR=0xxxxx  MEM=0xxxxx  OPC=x  ALU_OC=x  OUT=0x0000
+# [100000] Timeout. Finishing.
+# ** Note: $finish    : ../src/simulation/cpu_tb.v(77)
+#    Time: 100 ns  Iteration: 0  Instance: /cpu_tb

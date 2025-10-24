@@ -3,34 +3,91 @@ K3
 13
 cModel Technology
 Z0 dC:\Users\Nikola\Documents\VLSI sistemi\Projekat\tooling
-vmemory
+valu
 !i10b 1
-!s100 =C_D2BVaPY13zRgfS[g4m1
-IO5hk59lLX6QbH[]knbd:B2
-VB6:A<Po:Xo<50ebZ=o:VC2
+!s100 :<f092Mhm4]MA^9@b^dcA2
+I3B>QXS@d[VWgSjNOWRbDR3
+VSJ;618@iBOm`9`3UGU5Yn1
 Z1 dC:\Users\Nikola\Documents\VLSI sistemi\Projekat\tooling
-w1761238845
-8../src/simulation/modules/memory.v
-F../src/simulation/modules/memory.v
+w1761164276
+8../src/simulation/modules/alu.v
+F../src/simulation/modules/alu.v
 L0 1
 Z2 OV;L;10.1d;51
 r1
 !s85 0
 31
-Z3 !s108 1761239082.633000
-Z4 !s107 ../src/simulation/test_bench.v|../src/simulation/modules/memory.v|
-Z5 !s90 -work|work|-l|./vlog_compile.log|-override_timescale|1 ps / 1 ps|../src/simulation/modules/memory.v|../src/simulation/test_bench.v|
+Z3 !s108 1761339820.556000
+Z4 !s107 ../src/simulation/cpu_tb.v|../src/simulation/modules/cpu.v|../src/simulation/modules/alu.v|../src/simulation/modules/register.v|../src/simulation/modules/memory.v|
+Z5 !s90 -work|work|-l|./vlog_compile.log|-override_timescale|1 ps / 1 ps|../src/simulation/modules/memory.v|../src/simulation/modules/register.v|../src/simulation/modules/alu.v|../src/simulation/modules/cpu.v|../src/simulation/cpu_tb.v|
 !s101 -O0
 Z6 o-work work -override_timescale {1 ps / 1 ps} -O0
-vtest_bench
+vcpu
 !i10b 1
-!s100 lb3WKZV:[jAjVeAV?X:a>3
-I0E6UW41JDmXc62B7^LYZ_0
-VEJNK5ZO7TWUP1egUA9^TR1
+!s100 2k^L0S5EiCVAD`jnzg5cI3
+Ie8=2^=V<E_`SXoHk6[I?K1
+Vk0Ek0nC<Q_MXdZ9bZN[Ua2
 R1
-w1761239058
-8../src/simulation/test_bench.v
-F../src/simulation/test_bench.v
+w1761335386
+8../src/simulation/modules/cpu.v
+F../src/simulation/modules/cpu.v
+L0 1
+R2
+r1
+!s85 0
+31
+R3
+R4
+R5
+!s101 -O0
+R6
+vcpu_tb
+!i10b 1
+!s100 19<d2ZHnQE2nXSjlzNIdR0
+IminRJ[[N2IKNAZP6F;4Qz2
+V0P>[JOo>6KEkgKO=1CbUG0
+R1
+w1761339785
+8../src/simulation/cpu_tb.v
+F../src/simulation/cpu_tb.v
+L0 3
+R2
+r1
+!s85 0
+31
+R3
+R4
+R5
+!s101 -O0
+R6
+vmemory
+!i10b 1
+!s100 o__GRfcm9fahLi`CO;7;=0
+I]0InS`LL66G5DYW^<AXe@2
+VB6:A<Po:Xo<50ebZ=o:VC2
+R1
+w1761339194
+8../src/simulation/modules/memory.v
+F../src/simulation/modules/memory.v
+L0 1
+R2
+r1
+!s85 0
+31
+R3
+R4
+R5
+!s101 -O0
+R6
+vregister
+!i10b 1
+!s100 _J<e[enMVPeEz7^4KF?<51
+I3Cn7COUA89G@g?jB9z4d[0
+VemzR785l`hSMj;O;hOTQX2
+R1
+w1761260575
+8../src/simulation/modules/register.v
+F../src/simulation/modules/register.v
 L0 1
 R2
 r1
