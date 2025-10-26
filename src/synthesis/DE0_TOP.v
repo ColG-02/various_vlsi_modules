@@ -211,18 +211,16 @@ module DE0_TOP
 	//=======================================================
 	
 	top #(
-		.DIVISOR(50_000_000),
+		.DIVISOR(500_00_000),
 		.FILE_NAME("mem_init.mif"),
 		.ADDR_WIDTH(6),
 		.DATA_WIDTH(16)
 	) top_inst (
 		.clk(CLOCK_50),
-		.kbd({PS2_KBDAT, PS2_KBCLK}),
 		.btn(~BUTTON[2:0]),
 		.sw(SW[9:0]),
-		.mnt({VGA_HS, VGA_VS, VGA_R, VGA_G, VGA_B}),
 		.led(LEDG[9:0]),
-		.ssd({HEX3_D, HEX2_D, HEX1_D, HEX0_D})
+		.hex({HEX3_D, HEX2_D, HEX1_D, HEX0_D})
 	);
 
 endmodule

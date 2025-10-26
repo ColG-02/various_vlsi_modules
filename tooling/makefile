@@ -2,7 +2,7 @@
 # cd tooling
 # ./xpack/bin/make
 
-SIMUL_TOP_LEVEL_MODULE = cpu_tb
+SIMUL_TOP_LEVEL_MODULE = top
 SIMUL_LIB = work
 # 1 (yes) -> override timescale
 # 0 (no)  -> do NOT override timescale
@@ -35,8 +35,8 @@ SYNTH_CYCLONE5_DEFAULT_ASSIGNMENT_FILE = ./config/boards/cyclone5/assignment_def
 SYNTH_CYCLONE5_CONSTRAINTS_FILE = ./config/boards/cyclone5/DE0_CV_TOP.sdc
 # either empty variable or path ending with \\ i.e. double backslash
 # C:\\"Program Files"\\altera\\13.1\\quartus\\bin\\ 
-SYNTH_TOOL_EXE_DIR_PATH = C:\\altera\\13.1\\quartus\\bin\\
-
+SYNTH_TOOL_EXE_DIR_PATH = C:\\altera\\13.1\\quartus\\bin64\\
+# OVDE bin UMESTO bin64 ^
 LIST_FILE_ICARUS = ./config/list-icarus-verilog.lst
 LIST_FILE_SIMUL = ./config/list-src-files-simul.lst
 LIST_FILE_SYNTH = ./config/list-src-files-synth.lst
