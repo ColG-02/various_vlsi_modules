@@ -107,12 +107,21 @@ module cpu #(
     // A
     reg a_cl, a_ld;
     reg  [DATA_WIDTH-1:0] a_in;
-    //wire [DATA_WIDTH-1:0] a_out;
+    wire [DATA_WIDTH-1:0] a_out;
 
     register #(.DATA_WIDTH(DATA_WIDTH)) A (
-        .clk(clk),.rst_n(rst_n),.cl(a_cl),.ld(a_ld),.in(a_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(out)
+        .clk(clk),.rst_n(rst_n),.cl(a_cl),.ld(a_ld),.in(a_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(a_out)
     );
 
+
+    // R
+    reg r_cl, r_ld;
+    reg  [DATA_WIDTH-1:0] r_in;
+    wire [DATA_WIDTH-1:0] r_out;
+
+    register #(.DATA_WIDTH(DATA_WIDTH)) R (
+        .clk(clk),.rst_n(rst_n),.cl(r_cl),.ld(r_ld),.in(r_in),.inc(1'b0),.dec(1'b0),.sr(1'b0),.ir(1'b0),.sl(1'b0),.il(1'b0),.out(out)
+    );
 
     // X
     reg x_cl, x_ld;
@@ -238,6 +247,8 @@ module cpu #(
             mar_ld=1'b0;  mdr_ld=1'b0;
             x_ld =1'b0;   y_ld =1'b0;   z_ld =1'b0;
             a_ld =1'b0;
+            r_ld = 1'b0;
+            r_in = {DATA_WIDTH{1'b0}};
 
             // mar/mdr/a/r controls later...
             mar_in  = {ADDR_WIDTH{1'b0}};
@@ -585,8 +596,8 @@ module cpu #(
 
                         OP_OUT: begin
                             // show x_out on out = A (registered)
-                            a_ld = 1'b1;
-                            a_in = x_out;
+                            r_ld = 1'b1;
+                            r_in = x_out;
                             exec_step_next = 2'd1;
                         end
 
@@ -601,14 +612,19 @@ module cpu #(
 
                     2'd1: begin
                         if (do_write) begin
-                        we   = 1'b1;
-                        data = out;   // 'out' is A's registered output
+                            we   = 1'b1;
+                            data = a_out;   // 'out' is A's registered output
                         end
                         exec_step_next = 2'd2;
                     end
-
                     2'd2: begin
+                        // write bubble cycle (ensures next read sees new data on old-data RAM)
                         we = 1'b0;
+                        exec_step_next = 2'd3;
+                    end
+
+                    2'd3: begin
+                        //we = 1'b0;
                         next_state = S_FETCH;
                         exec_step_next = 2'd0;
                     end
