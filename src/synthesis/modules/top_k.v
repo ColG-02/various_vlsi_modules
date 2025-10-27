@@ -14,6 +14,7 @@ module top #(
 );
 
     wire rstn = sw[9];
+
     wire out_clk;
     wire we;
     wire [ADDR_WIDTH - 1:0] addr;
@@ -22,13 +23,6 @@ module top #(
     wire [ADDR_WIDTH - 1:0] pc;
     wire [ADDR_WIDTH - 1:0] sp;
     wire [DATA_WIDTH - 1:0] out_cpu;
-
-    wire [15:0] code;
-    wire status;
-    wire control;
-    wire [3:0] num;
-    wire [23:0] color_coded;
-
 
     wire [3:0] ones1, tens1, ones2, tens2;
 
@@ -39,8 +33,9 @@ module top #(
     memory #(.FILE_NAME(FILE_NAME), .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH)) 
         memory_inst (.clk(out_clk), .we(we), .addr(addr), .data(data), .out(mem_out));
 
-    cpu cpu_inst (.clk(out_clk), .rst_n(rstn), .mem(mem_out), .in({12'b0,num}), .control(control), .status(status),
+    cpu cpu_inst (.clk(out_clk), .rst_n(rstn), .mem(mem_out), .in({12'b0,sw[3:0]}), .control(sw[8]), .status(),
         .we(we), .addr(addr), .data(data), .out(out_cpu), .pc(pc), .sp(sp));
+
     
 
     bcd bcd_pc (.in(pc), .ones(ones1), .tens(tens1));
@@ -54,14 +49,5 @@ module top #(
     ssd ssd3 (.in(ones2), .out(hex[20:14]));
     
     ssd ssd4 (.in(tens2), .out(hex[27:21]));
-
-
-    ps2 ps2_inst(.clk(out_clk), .rst_n(rstn), .ps2_clk(kbd[0]), .ps2_data(kbd[1]), .code(code));
-
-    scan_codes scan_inst(.clk(out_clk), .rst_n(rstn), .code(code), .status(status), .control(control), .num(num));
-    
-    color_codes color_inst(.num(out_cpu[5:0]), .code(color_coded));
-
-    vga vga_inst(.clk(out_clk), .rst_n(rstn), .code(color_coded), .hsync(mnt[13]), .vsync(mnt[12]), .red(mnt[11:8]), .green(mnt[7:4]), .blue(mnt[3:0]));
     
 endmodule

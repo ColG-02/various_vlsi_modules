@@ -1,4 +1,3 @@
-
 module scan_codes (
     input clk,
     input rst_n,

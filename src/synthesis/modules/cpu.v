@@ -36,7 +36,9 @@ module cpu #(
 
     reg halted;           // latched “we are halted”
     reg halt_set;         // 1-cycle pulse from comb -> seq
+    
 
+    assign status = (state == S_EXEC) && (opc   == OP_IN) && (exec_step == 4'd0) && (~control);
     //assign status = halted;  // expose halt state if you want
 
     // ---------- DJUBRE ----------
@@ -601,41 +603,45 @@ module cpu #(
                     case (opc)
                         // -------- separate cases --------
                         OP_MOV: begin
-                        mar_in = dest_addrx_reg;  
-                        mar_ld = 1'b1;
-                        a_ld   = 1'b1;            
-                        a_in   = y_out;
-                        exec_step_next = 4'd1;
+                            mar_in = dest_addrx_reg;  
+                            mar_ld = 1'b1;
+                            a_ld   = 1'b1;            
+                            a_in   = y_out;
+                            exec_step_next = 4'd1;
                         end
 
                         OP_IN: begin
-                        mar_in = dest_addrx_reg;  
-                        mar_ld = 1'b1;
-                        a_ld   = 1'b1;            
-                        a_in   = in;
-                        exec_step_next = 4'd1;
+                            mar_in = dest_addrx_reg;  
+                            mar_ld = 1'b1;
+                            if(control) begin
+                                a_ld   = 1'b1;            
+                                a_in   = in;
+                                exec_step_next = 4'd1;
+                            end else begin
+                                exec_step_next = 4'd0;
+                            end
                         end
 
                         // -------- ALU group --------
                         OP_ADD, OP_SUB, OP_MUL, OP_DIV: begin
-                        mar_in = dest_addrx_reg;  
-                        mar_ld = 1'b1;
-                        a_ld   = 1'b1;            
-                        a_in   = alu_f;
-                        exec_step_next = 4'd1;
+                            mar_in = dest_addrx_reg;  
+                            mar_ld = 1'b1;
+                            a_ld   = 1'b1;            
+                            a_in   = alu_f;
+                            exec_step_next = 4'd1;
                         end
 
                         // -------- OUT --------
                         OP_OUT: begin
-                        r_ld = 1'b1; 
-                        r_in = x_out;
-                        exec_step_next = 4'd1;
+                            r_ld = 1'b1; 
+                            r_in = x_out;
+                            exec_step_next = 4'd1;
                         end
 
                         // -------- STOP (print up to three non-zero: X -> Y -> Z) --------
                         OP_STOP: begin
-                        if (rx != 3'b000) begin r_ld = 1'b1; r_in = x_out; end
-                        exec_step_next = 4'd8;
+                            if (rx != 3'b000) begin r_ld = 1'b1; r_in = x_out; end
+                            exec_step_next = 4'd8;
                         end
 
                         default: exec_step_next = 4'd1;
@@ -644,48 +650,48 @@ module cpu #(
 
                     // normal memory writeback (skipped for STOP/OUT)
                     4'd1: begin
-                    if (!stop && (opc==OP_MOV || opc==OP_IN
-                                    || opc==OP_ADD || opc==OP_SUB || opc==OP_MUL || opc==OP_DIV)) begin
-                        we   = 1'b1;
-                        data = a_out;
-                    end
-                    exec_step_next = 4'd2;
+                        if (!stop && (opc==OP_MOV || opc==OP_IN
+                                        || opc==OP_ADD || opc==OP_SUB || opc==OP_MUL || opc==OP_DIV)) begin
+                            we   = 1'b1;
+                            data = a_out;
+                        end
+                        exec_step_next = 4'd2;
                     end
 
                     4'd2: begin
-                    if (!stop) begin
-                        we = 1'b0;
-                        exec_step_next = 4'd3;   // write bubble
-                    end else begin
-                        exec_step_next = 4'd2;   // not used for STOP
-                    end
+                        if (!stop) begin
+                            we = 1'b0;
+                            exec_step_next = 4'd3;   // write bubble
+                        end else begin
+                            exec_step_next = 4'd2;   // not used for STOP
+                        end
                     end
 
                     4'd3: begin
-                    next_state = S_FETCH;
-                    exec_step_next = 4'd0;
+                        next_state = S_FETCH;
+                        exec_step_next = 4'd0;
                     end
 
                     // -------- STOP continuation Y--------
                     4'd8: begin
-                    if (ry != 3'b000) begin r_ld = 1'b1; r_in = y_out;end
-                    exec_step_next = 4'd9;
+                        if (ry != 3'b000) begin r_ld = 1'b1; r_in = y_out;end
+                        exec_step_next = 4'd9;
                     end
 
                     // -------- STOP continuation Y--------
                     4'd9: begin
-                    if (rz != 3'b000) begin r_ld = 1'b1; r_in = z_out; end
-                    exec_step_next = 4'd10;
+                        if (rz != 3'b000) begin r_ld = 1'b1; r_in = z_out; end
+                        exec_step_next = 4'd10;
                     end
 
                     4'd10: begin
-                    exec_step_next = 4'd15;
+                        exec_step_next = 4'd15;
                     end
 
                     // HALT state (park here)
                     4'd15: begin
-                    next_state     = S_EXEC;
-                    exec_step_next = 4'd15;
+                        next_state     = S_EXEC;
+                        exec_step_next = 4'd15;
                     end
                 endcase
                 end
