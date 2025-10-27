@@ -14,7 +14,7 @@ module memory #(
     reg [DATA_WIDTH-1:0] mem [2**ADDR_WIDTH-1:0];
 
     always @(posedge clk) begin
-        if (we) mem[addr] <= data;   // use non-blocking
+        if (we) mem[addr] <= data;  
         out <= mem[addr];
     end
     

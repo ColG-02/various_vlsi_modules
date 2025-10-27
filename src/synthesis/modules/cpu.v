@@ -264,8 +264,8 @@ module cpu #(
             mar_in  = {ADDR_WIDTH{1'b0}};
             //mdr_in  = {DATA_WIDTH{1'b0}};
 
-            we   = 1'b0;                     // <= important
-            data = {DATA_WIDTH{1'b0}};       // default, set when writing
+            we   = 1'b0;                     
+            data = {DATA_WIDTH{1'b0}};       
             //out  = out;  
 
             dest_addrx_next = dest_addrx_reg;
@@ -282,7 +282,7 @@ module cpu #(
         OP_OUT  = 4'h8,
         OP_STOP = 4'hF;
     
-    // Helper: which opcodes need a second word? (example list)
+    
     function needs_ext;
         input [3:0] op;
         begin
@@ -332,7 +332,7 @@ module cpu #(
     wire z_nz = |z_out;
 
     
-    // 2) Next-state + outputs (combinational)
+    
     always @* begin
         deassert_all();
         if (halted) begin
@@ -340,9 +340,7 @@ module cpu #(
             exec_step_next = 4'd15;   // stay in HALT
         end
         next_state = state;
-        // if (!booted) begin
-        //     next_state = S_BOOT;
-        // end
+        
         case (state)
             S_BOOT: begin
                 pc_ld = 1'b1; pc_in = PROG_START;  // 6'd8
@@ -358,16 +356,16 @@ module cpu #(
                         mar_ld  = 1'b1;
                         fetch_step_next = 4'd1;
                     end
-                    4'd1: begin // Issue memory read at MAR
+                    4'd1: begin 
                         //addr = mar_out;   MAR_OUT direktno povezan na ADDR
                         we = 1'b0;      // read
                         fetch_step_next = 4'd2;
                     end
-                    4'd2: begin // *** wait/bubble *** (nothing but hold)
-                        fetch_step_next = 4'd3;   // data becomes valid on next clock
+                    4'd2: begin 
+                        fetch_step_next = 4'd3;   
                     end
                     4'd3: begin
-                        // Capture memory word into MDR
+                        
                         //mdr_in  = mem; direkt
                         mdr_ld  = 1'b1;
                         fetch_step_next = 4'd4;
@@ -379,15 +377,14 @@ module cpu #(
                         ir_ld = 1'b1;
                         ir_in = { ir_out[31:16], mdr_out };
                         pc_inc = 1'b1;
-                        // Need a second word?
                         fetch_step_next = 4'd5;
                     end
                     4'd5: begin
                         if (needs_ext(mdr_out[15:12])) begin
-                            fetch_step_next = 4'd6;   // go fetch WORD1
+                            fetch_step_next = 4'd6;   
                         end else begin
                             fetch_step_next = 4'd0;
-                            next_state = S_ADDR; // done fetching
+                            next_state = S_ADDR; 
                         end
                     end
                     // ---- WORD1 (only if needed) ----
@@ -398,16 +395,14 @@ module cpu #(
                         fetch_step_next = 4'd7;
                     end
                     4'd7: begin
-                        // Issue memory read at MAR
                         //addr_next = mar_out;
                         we = 1'b0;
                         fetch_step_next = 4'd8;
                     end
-                    4'd8: begin // *** wait/bubble *** (nothing but hold)
-                        fetch_step_next = 4'd9;   // data becomes valid on next clock
+                    4'd8: begin 
+                        fetch_step_next = 4'd9;   
                     end
                     4'd9: begin
-                        // Capture memory word into MDR
                         //mdr_in  = mem; direkt
                         mdr_ld  = 1'b1;
                         fetch_step_next = 4'd10;
@@ -421,7 +416,7 @@ module cpu #(
                     end
                     4'd11: begin
                         fetch_step_next = 4'd0;
-                        next_state = S_ADDR;         // leave fetch with IR stable
+                        next_state = S_ADDR;         
                     end
                 endcase
             end
@@ -438,15 +433,15 @@ module cpu #(
                             addr_step_next = 5'd9; // skip to Y
                         end
                     end
-                    5'd1: begin // ISSUE base(X)
+                    5'd1: begin 
                         //addr_next = mar_out;
                         we   = 1'b0;
                         addr_step_next = 5'd2;
                     end
-                    5'd2: begin // BUBBLE (sync BRAM)
+                    5'd2: begin 
                         addr_step_next = 5'd3;
                     end
-                    5'd3: begin // CAPTURE base(X)
+                    5'd3: begin 
                         mdr_ld = 1'b1;
                         //mdr_in = mem; direkt
                         addr_step_next = 5'd4;
@@ -464,20 +459,20 @@ module cpu #(
                             addr_step_next = 5'd9;               // go to Y
                         end
                     end
-                    5'd5: begin // ISSUE X pointer target
+                    5'd5: begin 
                         //addr_next = mar_out;
                         we   = 1'b0;
                         addr_step_next = 5'd6;
                     end
-                    5'd6: begin // BUBBLE
+                    5'd6: begin 
                         addr_step_next = 5'd7;
                     end
-                    5'd7: begin // CAPTURE X pointer target
+                    5'd7: begin 
                         mdr_ld = 1'b1;
                         //mdr_in = mem; direkt
                         addr_step_next = 5'd8;
                     end
-                    5'd8: begin // LOAD X (indirect)
+                    5'd8: begin
                         x_ld = 1'b1;
                         x_in = mdr_out;
                         addr_step_next = 5'd9;                 // go to Y
@@ -492,12 +487,12 @@ module cpu #(
                             addr_step_next = 5'd18;              // skip to Z
                         end
                     end
-                    5'd10: begin // ISSUE base(Y)
+                    5'd10: begin 
                         //addr_next = mar_out;
                         we  = 1'b0;
                         addr_step_next = 5'd11;
                     end
-                    5'd11: begin // BUBBLE
+                    5'd11: begin 
                         addr_step_next = 5'd12;
                     end
                     5'd12: begin // CAPTURE base(Y)
@@ -518,15 +513,15 @@ module cpu #(
                             addr_step_next = 5'd18;              // go to Z
                         end
                     end
-                    5'd14: begin // ISSUE Y pointer target
+                    5'd14: begin 
                         //addr_next = mar_out;
                         we   = 1'b0;
                         addr_step_next = 5'd15;
                     end
-                    5'd15: begin // BUBBLE
+                    5'd15: begin 
                         addr_step_next = 5'd16;
                     end
-                    5'd16: begin // CAPTURE Y pointer target
+                    5'd16: begin 
                         mdr_ld = 1'b1;
                         //mdr_in = mem;
                         addr_step_next = 5'd17;
@@ -543,18 +538,18 @@ module cpu #(
                             mar_in = {{(ADDR_WIDTH-3){1'b0}}, rz};
                             addr_step_next = 5'd19;
                         end else begin
-                            addr_step_next = 5'd27;              // done
+                            addr_step_next = 5'd27;   
                         end
                     end
-                    5'd19: begin // ISSUE base(Z)
+                    5'd19: begin 
                         //addr_next = mar_out;
                         we  = 1'b0;
                         addr_step_next = 5'd20;
                     end
-                    5'd20: begin // BUBBLE
+                    5'd20: begin 
                         addr_step_next = 5'd21;
                     end
-                    5'd21: begin // CAPTURE base(Z)
+                    5'd21: begin 
                         mdr_ld = 1'b1;
                         //mdr_in = mem;
                         addr_step_next = 5'd22;
@@ -572,7 +567,7 @@ module cpu #(
                             addr_step_next = 5'd27;              // done
                         end
                     end
-                    5'd23: begin // ISSUE Z pointer target
+                    5'd23: begin 
                         //addr_next = mar_out;
                         we  = 1'b0;
                         addr_step_next = 5'd24;
@@ -580,7 +575,7 @@ module cpu #(
                     5'd24: begin // BUBBLE
                         addr_step_next = 5'd25;
                     end
-                    5'd25: begin // CAPTURE Z pointer target
+                    5'd25: begin 
                         mdr_ld = 1'b1;
                         //mdr_in = mem;
                         addr_step_next = 5'd26;
@@ -588,7 +583,7 @@ module cpu #(
                     5'd26: begin // LOAD Z (indirect)
                         z_ld = 1'b1;
                         z_in = mdr_out;
-                        addr_step_next = 5'd27;                // done
+                        addr_step_next = 5'd27; 
                     end
                     // ===== done =====
                     5'd27: begin
@@ -602,7 +597,6 @@ module cpu #(
                 case (exec_step)
                     4'd0: begin
                     case (opc)
-                        // -------- separate cases --------
                         OP_MOV: begin
                             mar_in = dest_addrx_reg;  
                             mar_ld = 1'b1;
@@ -624,8 +618,7 @@ module cpu #(
                                 exec_step_next = 4'd0;
                             end
                         end
-
-                        // -------- ALU group --------
+                        
                         OP_ADD, OP_SUB, OP_MUL, OP_DIV: begin
                             mar_in = dest_addrx_reg;  
                             mar_ld = 1'b1;

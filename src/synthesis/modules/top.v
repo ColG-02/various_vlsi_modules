@@ -7,8 +7,8 @@ module top #(
     input clk,
     input [2:0] btn,
     input [9:0] sw,
-    input [1:0] kbd, // {ps2_data, ps2_clk}
-    output [13:0] mnt, // {hsync, vsync, red[3:0], green[3:0], blue[3:0]}
+    input [1:0] kbd,
+    output [13:0] mnt, 
     output [9:0] led,
     output [27:0] ssd
 );

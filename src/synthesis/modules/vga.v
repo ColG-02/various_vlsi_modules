@@ -9,10 +9,6 @@ module vga (
     output [3:0] blue
 );
 
-    //            display  front       sync       back
-    //horizontal  0-799    800-855     856-975    976-1039
-    //vertical    0-599    600-636     637-642    643-665
-
     reg [10:0] h_counter;
     reg [9:0] v_counter;
 
