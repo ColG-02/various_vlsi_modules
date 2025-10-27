@@ -31,7 +31,13 @@ module cpu #(
     // ---------- micro-steps ----------
     reg [3:0] fetch_step, fetch_step_next;  // 0..7
     reg [4:0] addr_step,  addr_step_next;   // 0..31
-    reg [1:0] exec_step, exec_step_next;
+    reg [3:0] exec_step, exec_step_next;
+
+
+    reg halted;           // latched “we are halted”
+    reg halt_set;         // 1-cycle pulse from comb -> seq
+
+    //assign status = halted;  // expose halt state if you want
 
     // ---------- DJUBRE ----------
     // reg                    we_reg,    we_next;
@@ -182,8 +188,8 @@ module cpu #(
             state <= S_BOOT;
             fetch_step  <= 4'd0;
             addr_step   <= 5'd0;
-            exec_step <= 2'd0;
-            //booted     <= 1'b0;
+            exec_step <= 4'd0;
+            halted    <= 1'b0;
 
             // we_reg <= 1'b0;
             // data_reg <= {DATA_WIDTH{1'b0}};
@@ -204,7 +210,8 @@ module cpu #(
             fetch_step <= fetch_step_next; 
             addr_step <= addr_step_next;
             exec_step <= exec_step_next;
-            //booted <= 1'b1;  
+            
+            if (halt_set) halted <= 1'b1;
             
             // we_reg <= we_next;
             // addr_reg <= addr_next;
@@ -230,7 +237,7 @@ module cpu #(
             // data_next   = data_reg;
             // out_next    = out_reg;
             // status_next = status_reg;
-
+            halt_set = 1'b0;
             // default micro-steps hold
             fetch_step_next= fetch_step;
             addr_step_next = addr_step;
@@ -291,7 +298,7 @@ module cpu #(
             OP_ADD, OP_SUB, OP_MUL, OP_DIV: op_mask = 3'b111;
             OP_OUT:                         op_mask = 3'b100;
             OP_IN:                          op_mask = 3'b100;
-            OP_STOP:                        op_mask = 3'b000;
+            OP_STOP:                        op_mask = 3'b111;
             default:                        op_mask = 3'b000;
             endcase
         end
@@ -315,10 +322,20 @@ module cpu #(
     wire do_write =
     (opc==OP_MOV) | (opc==OP_ADD) | (opc==OP_SUB) |
     (opc==OP_MUL) | (opc==OP_DIV) | (opc==OP_IN);
+
+    wire stop = (opc==OP_STOP);
+    wire x_nz = |x_out;
+    wire y_nz = |y_out;
+    wire z_nz = |z_out;
+
     
     // 2) Next-state + outputs (combinational)
     always @* begin
         deassert_all();
+        if (halted) begin
+            next_state     = S_EXEC;
+            exec_step_next = 4'd15;   // stay in HALT
+        end
         next_state = state;
         // if (!booted) begin
         //     next_state = S_BOOT;
@@ -579,57 +596,99 @@ module cpu #(
             end
             // ---------------- EXEC -----------------
             S_EXEC: begin
-                // EXEC
                 case (exec_step)
-                    2'd0: begin
-                        case (opc)
-                        OP_MOV, OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_IN: begin
-                            // prepare address and data into A
-                            mar_in = dest_addrx_reg;
-                            mar_ld = 1'b1;
-                            a_ld   = 1'b1;
-                            a_in   = (opc==OP_IN) ? in
-                                : (opc==OP_MOV) ? y_out
-                                :                 alu_f;
-                            exec_step_next = 2'd1;
+                    4'd0: begin
+                    case (opc)
+                        // -------- separate cases --------
+                        OP_MOV: begin
+                        mar_in = dest_addrx_reg;  
+                        mar_ld = 1'b1;
+                        a_ld   = 1'b1;            
+                        a_in   = y_out;
+                        exec_step_next = 4'd1;
                         end
 
+                        OP_IN: begin
+                        mar_in = dest_addrx_reg;  
+                        mar_ld = 1'b1;
+                        a_ld   = 1'b1;            
+                        a_in   = in;
+                        exec_step_next = 4'd1;
+                        end
+
+                        // -------- ALU group --------
+                        OP_ADD, OP_SUB, OP_MUL, OP_DIV: begin
+                        mar_in = dest_addrx_reg;  
+                        mar_ld = 1'b1;
+                        a_ld   = 1'b1;            
+                        a_in   = alu_f;
+                        exec_step_next = 4'd1;
+                        end
+
+                        // -------- OUT --------
                         OP_OUT: begin
-                            // show x_out on out = A (registered)
-                            r_ld = 1'b1;
-                            r_in = x_out;
-                            exec_step_next = 2'd1;
+                        r_ld = 1'b1; 
+                        r_in = x_out;
+                        exec_step_next = 4'd1;
                         end
 
+                        // -------- STOP (print up to three non-zero: X -> Y -> Z) --------
                         OP_STOP: begin
-                            // status handling if you add it
-                            exec_step_next = 2'd1;
+                        if (rx != 3'b000) begin r_ld = 1'b1; r_in = x_out; end
+                        exec_step_next = 4'd8;
                         end
 
-                        default: exec_step_next = 2'd1;
-                        endcase
+                        default: exec_step_next = 4'd1;
+                    endcase
                     end
 
-                    2'd1: begin
-                        if (do_write) begin
-                            we   = 1'b1;
-                            data = a_out;   // 'out' is A's registered output
-                        end
-                        exec_step_next = 2'd2;
+                    // normal memory writeback (skipped for STOP/OUT)
+                    4'd1: begin
+                    if (!stop && (opc==OP_MOV || opc==OP_IN
+                                    || opc==OP_ADD || opc==OP_SUB || opc==OP_MUL || opc==OP_DIV)) begin
+                        we   = 1'b1;
+                        data = a_out;
                     end
-                    2'd2: begin
-                        // write bubble cycle (ensures next read sees new data on old-data RAM)
+                    exec_step_next = 4'd2;
+                    end
+
+                    4'd2: begin
+                    if (!stop) begin
                         we = 1'b0;
-                        exec_step_next = 2'd3;
+                        exec_step_next = 4'd3;   // write bubble
+                    end else begin
+                        exec_step_next = 4'd2;   // not used for STOP
+                    end
                     end
 
-                    2'd3: begin
-                        //we = 1'b0;
-                        next_state = S_FETCH;
-                        exec_step_next = 2'd0;
+                    4'd3: begin
+                    next_state = S_FETCH;
+                    exec_step_next = 4'd0;
+                    end
+
+                    // -------- STOP continuation Y--------
+                    4'd8: begin
+                    if (ry != 3'b000) begin r_ld = 1'b1; r_in = y_out;end
+                    exec_step_next = 4'd9;
+                    end
+
+                    // -------- STOP continuation Y--------
+                    4'd9: begin
+                    if (rz != 3'b000) begin r_ld = 1'b1; r_in = z_out; end
+                    exec_step_next = 4'd10;
+                    end
+
+                    4'd10: begin
+                    exec_step_next = 4'd15;
+                    end
+
+                    // HALT state (park here)
+                    4'd15: begin
+                    next_state     = S_EXEC;
+                    exec_step_next = 4'd15;
                     end
                 endcase
-            end
+                end
         endcase
     end
 
