@@ -38,7 +38,7 @@ module cpu #(
     reg halt_set;         // 1-cycle pulse from comb -> seq
     
 
-    assign status = (state == S_EXEC) && (opc   == OP_IN) && (exec_step == 4'd0) && (~control);
+    assign status = (state == S_EXEC) && (opc == OP_IN) && (exec_step == 4'd0) && (~control);
     //assign status = halted;  // expose halt state if you want
 
     // ---------- DJUBRE ----------
@@ -46,13 +46,13 @@ module cpu #(
     // reg [ADDR_WIDTH-1:0]   addr_reg,  addr_next;
     // reg [DATA_WIDTH-1:0]   data_reg,  data_next;
     // reg [DATA_WIDTH-1:0]   out_reg,   out_next;
-    // reg                    status_reg, status_next;
+    //reg                    status_reg, status_next;
 
     // assign we     = we_reg;
     // assign addr   = addr_reg;
     // assign data   = data_reg;
     // assign out    = out_reg;
-    // assign status = status_reg;
+    //assign status = status_reg;
 
 
     // PC
@@ -197,7 +197,7 @@ module cpu #(
             // data_reg <= {DATA_WIDTH{1'b0}};
             // addr_reg <= {ADDR_WIDTH{1'b0}};
             // out_reg <= {DATA_WIDTH{1'b0}};
-            // status_reg <= 1'b0;
+            //status_reg <= 1'b0;
 
             //pc_in_reg <= PROG_START;
             //sp_in_reg <= STACK_INIT;
@@ -219,7 +219,7 @@ module cpu #(
             // addr_reg <= addr_next;
             // data_reg <= data_next;
             // out_reg <= out_next;
-            // status_reg <= status_next;
+            //status_reg <= status_next;
 
             //pc_in_reg <= pc_in_next;
             //sp_in_reg <= sp_in_next;
@@ -238,7 +238,7 @@ module cpu #(
             // addr_next   = addr_reg;
             // data_next   = data_reg;
             // out_next    = out_reg;
-            // status_next = status_reg;
+            //status_next = status_reg;
             halt_set = 1'b0;
             // default micro-steps hold
             fetch_step_next= fetch_step;
@@ -252,6 +252,7 @@ module cpu #(
             //  sp_in_next = sp_in_reg;
             ir_cl=0; ir_ld=0; 
             //ir_in_next = ir_in_reg;
+            a_in = 0; z_in = 0; y_in = 0; x_in = 0; ir_in = 0; sp_in = 0; pc_in = 0;
 
             mar_ld=1'b0;  mdr_ld=1'b0;
             x_ld =1'b0;   y_ld =1'b0;   z_ld =1'b0;
@@ -613,10 +614,12 @@ module cpu #(
                         OP_IN: begin
                             mar_in = dest_addrx_reg;  
                             mar_ld = 1'b1;
+                            //status_next = 1'b1;
                             if(control) begin
                                 a_ld   = 1'b1;            
                                 a_in   = in;
                                 exec_step_next = 4'd1;
+                                //status_next = 1'b0;
                             end else begin
                                 exec_step_next = 4'd0;
                             end

@@ -1,87 +1,74 @@
-// ps2.v
-// Last two successfully read PS/2 bytes:
-//   - newest byte in code[7:0]
-//   - previous byte in code[15:8]
 module ps2 (
-    input  wire       clk,        // system clock
-    input  wire       rst_n,      // async active-low reset
-    input  wire       ps2_clk,    // raw PS/2 clock from keyboard
-    input  wire       ps2_data,   // raw PS/2 data from keyboard
-    output reg [15:0] code        // {prev, last}
+    input clk,
+    input rst_n,
+    input ps2_clk,
+    input ps2_data,
+    output [15:0] code
 );
-    // ============================================================
-    // Bring ps2_clk / ps2_data safely into clk domain (2FF sync)
-    // ============================================================
-    reg c0, c1, d0, d1;
-    always @(posedge clk or negedge rst_n) begin
+    localparam WAITING = 2'd0, READ = 2'd1, DONE = 2'd2;
+
+    reg [1:0] state, state_next;
+    reg [1:0] ps2_clk_reg, ps2_clk_next;
+    reg [3:0] bit_count, bit_count_next;
+    reg [8:0] shift_reg, shift_next;
+    reg [15:0] code_reg, code_next;
+
+    assign code = code_reg;
+    wire ps2_clk_falling;
+    assign ps2_clk_falling = (ps2_clk_reg[1] == 1'b1) && (ps2_clk_reg[0] == 1'b0);
+
+    always @(posedge clk, negedge rst_n) begin
         if (!rst_n) begin
-            c0 <= 1'b1; c1 <= 1'b1;   // idle ps2_clk is high
-            d0 <= 1'b1; d1 <= 1'b1;   // idle ps2_data is high
+            state <= WAITING;
+            ps2_clk_reg <= 2'h0;
+            bit_count <= 4'h0;
+            shift_reg <= 9'h0;
+            code_reg <= 16'h0;
         end else begin
-            c0 <= ps2_clk; c1 <= c0;
-            d0 <= ps2_data; d1 <= d0;
+            state <= state_next;
+            ps2_clk_reg <= ps2_clk_next;
+            bit_count <= bit_count_next;
+            shift_reg <= shift_next;
+            code_reg <= code_next;
         end
     end
 
-    // One-cycle pulse in clk domain on PS/2 falling edge
-    wire ps2_fall = (c1 & ~c0);
-
-    // ============================================================
-    // Simple PS/2 frame receiver (start, 8 data bits LSB-first,
-    // odd parity, stop)
-    // ============================================================
-    localparam WAIT_START = 2'd0,
-               READ_BITS  = 2'd1,
-               READ_PAR   = 2'd2,
-               READ_STOP  = 2'd3;
-
-    reg [1:0] state;
-    reg [3:0] bit_cnt;      // counts 0..7 for 8 data bits
-    reg [7:0] shift;        // assembled data byte (LSB first)
-    reg       parity_bit;   // received parity
-
-    // Synchronous FSM driven only when a ps2_fall occurs
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state      <= WAIT_START;
-            bit_cnt    <= 4'd0;
-            shift      <= 8'h00;
-            parity_bit <= 1'b0;
-            code       <= 16'h0000;
-        end else if (ps2_fall) begin
+    always @(*) begin
+        state_next = state;
+        ps2_clk_next = {ps2_clk_reg[0], ps2_clk};
+        bit_count_next = bit_count;
+        shift_next = shift_reg;
+        code_next = code_reg;
+        
+        if (ps2_clk_falling) begin
             case (state)
-                WAIT_START: begin
-                    // Start bit must be 0
-                    if (d1 == 1'b0) begin
-                        bit_cnt <= 4'd0;
-                        state   <= READ_BITS;
+                WAITING: begin
+                    if (ps2_data == 1'b0) state_next = READ; 
+                end 
+
+                READ: begin
+                    shift_next = {ps2_data, shift_reg[8:1]};
+                    if (bit_count == 8) begin
+                        state_next = DONE;
+                    end else begin
+                        bit_count_next = bit_count + 4'h1;
                     end
                 end
-
-                READ_BITS: begin
-                    // Sample 8 data bits, LSB first
-                    shift[bit_cnt] <= d1;
-                    if (bit_cnt == 4'd7)
-                        state <= READ_PAR;
-                    else
-                        bit_cnt <= bit_cnt + 4'd1;
-                end
-
-                READ_PAR: begin
-                    parity_bit <= d1;     // capture parity
-                    state      <= READ_STOP;
-                end
-
-                READ_STOP: begin
-                    // Stop bit must be 1, and parity must be odd
-                    if (d1 == 1'b1 && ((^shift) == ~parity_bit)) begin
-                        // Push newest byte into low 8 bits
-                        code <= {code[7:0], shift};
+                
+                DONE: begin
+                    if (^shift_reg[8:0]) begin
+                        code_next = {code_reg[7:0], shift_reg[7:0]};
+                    end else begin
+                        code_next = 16'h0;
                     end
-                    // In any case, get ready for next frame
-                    state <= WAIT_START;
+                    shift_next = 9'h0;
+                    bit_count_next = 4'h0;
+                    state_next = WAITING;
                 end
             endcase
         end
     end
+
+
+
 endmodule

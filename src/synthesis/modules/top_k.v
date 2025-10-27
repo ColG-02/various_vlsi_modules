@@ -33,7 +33,7 @@ module top #(
     memory #(.FILE_NAME(FILE_NAME), .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH)) 
         memory_inst (.clk(out_clk), .we(we), .addr(addr), .data(data), .out(mem_out));
 
-    cpu cpu_inst (.clk(out_clk), .rst_n(rstn), .mem(mem_out), .in({12'b0,sw[3:0]}), .control(sw[8]), .status(),
+    cpu cpu_inst (.clk(out_clk), .rst_n(rstn), .mem(mem_out), .in({12'b0,sw[3:0]}), .control(sw[8]), .status(led[5]),
         .we(we), .addr(addr), .data(data), .out(out_cpu), .pc(pc), .sp(sp));
 
     

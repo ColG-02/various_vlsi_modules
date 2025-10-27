@@ -42,7 +42,7 @@ module scan_codes (
             control <= 1'b0;
             num <= 4'd0;
         end else begin
-            if (status_rising) begin
+            if (status) begin
                 case (code)
                     KEY_0: begin num <= 4'd0; control <= 1'b1; end
                     KEY_1: begin num <= 4'd1; control <= 1'b1; end
@@ -56,7 +56,7 @@ module scan_codes (
                     KEY_9: begin num <= 4'd9; control <= 1'b1; end
                     default: begin control <= 1'b0; end
                 endcase
-            end else if (!status) begin
+            end else begin
                 control <= 1'b0;
             end
         end

@@ -15,6 +15,6 @@ src/synthesis/modules/scan_codes.v
 src/synthesis/modules/color_codes.v
 src/synthesis/modules/vga.v
 
-src/synthesis/modules/top_k.v
+src/synthesis/modules/top.v
 src/synthesis/DE0_CV_TOP.v
 src/synthesis/DE0_TOP.v

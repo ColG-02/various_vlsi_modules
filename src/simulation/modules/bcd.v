@@ -5,6 +5,6 @@ module bcd (
 );
 
     assign ones = in % 10;
-    assign tens = in / 10;
+    assign tens = (in / 10) % 10;
     
 endmodule
