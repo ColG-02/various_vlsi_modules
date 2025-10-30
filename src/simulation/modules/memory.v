@@ -1,35 +1,31 @@
-module memory #(
-	parameter FILE_NAME = "mem_init copy.mif",
-    parameter ADDR_WIDTH = 6,
-    parameter DATA_WIDTH = 16
-)(
-    input clk,
+module memory(
+    input clk, 
     input rst_n,
     input we,
-    input [ADDR_WIDTH - 1:0] addr,
-    input [DATA_WIDTH - 1:0] data,
-    output reg [DATA_WIDTH - 1:0] out
+    input [5:0] addr,
+    input [7:0] data,
+    output [7:0] out
 );
 
-    (* ram_init_file = FILE_NAME *)
-    reg [DATA_WIDTH-1:0] mem [2**ADDR_WIDTH-1:0];
+    reg [7:0] out_reg, out_next;
 
-    //reg [ADDR_WIDTH-1:0] addr_r;
+    reg [7:0] mem [2**6 - 1:0];
 
-    initial begin
-        if (FILE_NAME != "") $readmemh(FILE_NAME, mem);
-    end
+    assign out = mem[addr];
+    integer i;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-    //        addr_r <= {ADDR_WIDTH{1'b0}};
-            out <= {DATA_WIDTH{1'b0}};
-        end else begin
-    //        addr_r <= addr;
-            if (we) mem[addr] <= data;
-            else if (!we) out <= mem[addr];
-    //        else if (!we) out <= mem[addr_r];        
+    always @(posedge clk, negedge rst_n) begin
+        if(!rst_n) begin
+            for (i = 0; i < 64; i = i + 1)
+                mem[i] <= 8'd0;
         end
+        else begin
+            if(we) 
+                 mem[addr] <= data;
+        end
+        
     end
+
+   
     
 endmodule
